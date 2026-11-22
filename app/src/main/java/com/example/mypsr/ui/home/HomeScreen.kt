@@ -2,7 +2,6 @@ package com.example.mypsr.ui.home
 
 import android.app.Activity
 import android.content.Context
-import android.content.Intent
 import android.media.projection.MediaProjectionManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -33,8 +32,10 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -45,13 +46,19 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -73,6 +80,7 @@ import java.util.Locale
 fun HomeScreen(
     viewModel: HomeViewModel,
     onNavigateToOnboarding: () -> Unit,
+    onNavigateToSettings: () -> Unit,
     onNavigateToReview: (Long) -> Unit,
     onNavigateToViewer: (Long) -> Unit
 ) {
@@ -81,6 +89,9 @@ fun HomeScreen(
     val recordingState by viewModel.recordingState.collectAsState()
     val stepCount by viewModel.currentStepCount.collectAsState()
 
+    var renamingSession by remember { mutableStateOf<SessionEntity?>(null) }
+    var renameInputText by remember { mutableStateOf("") }
+
     // Screen Capture Intent Launcher
     val projectionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -88,6 +99,48 @@ fun HomeScreen(
         if (result.resultCode == Activity.RESULT_OK && result.data != null) {
             viewModel.startNewSession(result.resultCode, result.data!!)
         }
+    }
+
+    // Rename Dialog
+    renamingSession?.let { session ->
+        AlertDialog(
+            onDismissRequest = { renamingSession = null },
+            title = { Text(text = "Rename Recording", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    Text(
+                        text = "Enter a new title for this recording session:",
+                        style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = renameInputText,
+                        onValueChange = { renameInputText = it },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = CyberCyan),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (renameInputText.isNotBlank()) {
+                            viewModel.renameSession(session.id, renameInputText)
+                        }
+                        renamingSession = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = CyberCyan, contentColor = Color.Black)
+                ) {
+                    Text(text = "Save", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { renamingSession = null }) {
+                    Text(text = "Cancel")
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -109,6 +162,13 @@ fun HomeScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            tint = CyberCyan
+                        )
+                    }
                     IconButton(onClick = onNavigateToOnboarding) {
                         Icon(
                             imageVector = Icons.Default.Security,
@@ -183,6 +243,10 @@ fun HomeScreen(
                     items(sessions, key = { it.id }) { session ->
                         SessionItemCard(
                             session = session,
+                            onRename = {
+                                renamingSession = session
+                                renameInputText = session.title
+                            },
                             onReview = { onNavigateToReview(session.id) },
                             onViewReport = { onNavigateToViewer(session.id) },
                             onShare = { viewModel.shareSessionReport(context, session) },
@@ -258,6 +322,7 @@ fun ActiveRecordingCard(
 @Composable
 fun SessionItemCard(
     session: SessionEntity,
+    onRename: () -> Unit,
     onReview: () -> Unit,
     onViewReport: () -> Unit,
     onShare: () -> Unit,
@@ -278,11 +343,25 @@ fun SessionItemCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = session.title,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    maxLines = 1
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = session.title,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        maxLines = 1
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    IconButton(onClick = onRename, modifier = Modifier.size(24.dp)) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Rename Recording",
+                            tint = CyberCyan,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
                 IconButton(onClick = onDelete) {
                     Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Gray)
                 }

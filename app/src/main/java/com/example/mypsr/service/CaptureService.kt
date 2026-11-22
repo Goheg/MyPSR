@@ -219,7 +219,8 @@ class CaptureService : Service() {
                         if (isSensitive && targetBounds != null && !targetBounds.isEmpty) {
                             processedBitmap = ImageUtils.applyBoundsRedaction(bitmap, targetBounds)
                         }
-                        ImageUtils.compressBitmapToJpeg(processedBitmap, quality = 80)
+                        val quality = com.example.mypsr.data.local.UserPreferences.getInstance(applicationContext).getScreenshotQuality().qualityValue
+                        ImageUtils.compressBitmapToJpeg(processedBitmap, quality = quality)
                     } else null
                 } else null
             } catch (e: Exception) {

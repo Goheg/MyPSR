@@ -51,7 +51,8 @@ object HtmlReportGenerator {
                         if (step.redactionBoxes.isNotEmpty()) {
                             processedBitmap = ImageUtils.applyRedactions(bitmap, step.redactionBoxes)
                         }
-                        val jpegBytes = ImageUtils.compressBitmapToJpeg(processedBitmap, quality = 80)
+                        val quality = com.example.mypsr.data.local.UserPreferences.getInstance(context).getScreenshotQuality().qualityValue
+                        val jpegBytes = ImageUtils.compressBitmapToJpeg(processedBitmap, quality = quality)
                         if (processedBitmap != bitmap) {
                             processedBitmap.recycle()
                         }

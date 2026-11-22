@@ -45,6 +45,25 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         SessionManager.stopSession(getApplication())
     }
 
+    fun renameSession(sessionId: Long, newTitle: String) {
+        viewModelScope.launch {
+            val session = repository.getSessionById(sessionId)
+            if (session != null && newTitle.isNotBlank()) {
+                val updated = session.copy(title = newTitle.trim())
+                repository.updateSession(updated)
+
+                // Re-generate HTML report if existing so the report header displays the new title
+                if (!session.htmlReportPath.isNullOrBlank()) {
+                    val steps = repository.getStepsForSession(sessionId).firstOrNull() ?: emptyList()
+                    if (steps.isNotEmpty()) {
+                        val context = getApplication<Application>()
+                        HtmlReportGenerator.generateHtmlReport(context, updated, steps)
+                    }
+                }
+            }
+        }
+    }
+
     fun deleteSession(sessionId: Long) {
         viewModelScope.launch {
             repository.deleteSession(sessionId)
